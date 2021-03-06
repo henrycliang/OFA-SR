@@ -19,7 +19,7 @@ Please refer to [Meta-SR](https://github.com/XuecaiHu/Meta-SR-Pytorch) to prepar
 
 
 # Testing
-- Please refer to [Test_demo](https://github.com/liangheng96/OFA-SR/blob/master/config_demo/test_demo.sh) to get the training configuration.
+- Please refer to [Test_demo](https://github.com/liangheng96/OFA-SR/blob/master/config_demo/test_demo.sh) to get the testing configuration.
 
 
 # Current Performance
