@@ -1,0 +1,124 @@
+# Residual Dense Network for Image Super-Resolution
+# https://arxiv.org/abs/1802.08797
+
+from model import common
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+def make_model(args, parent=False):
+    return RDN_OSM(args)
+
+class RDB_Conv(nn.Module):
+    def __init__(self, inChannels, growRate, kSize=3):
+        super(RDB_Conv, self).__init__()
+        Cin = inChannels
+        G  = growRate
+        self.conv = nn.Sequential(*[
+            nn.Conv2d(Cin, G, kSize, padding=(kSize-1)//2, stride=1),
+            nn.ReLU()
+        ])
+
+    def forward(self, x):
+        out = self.conv(x)
+        return torch.cat((x, out), 1)
+
+class RDB(nn.Module):
+    def __init__(self, growRate0, growRate, nConvLayers, kSize=3):
+        super(RDB, self).__init__()
+        G0 = growRate0
+        G  = growRate
+        C  = nConvLayers
+        
+        convs = []
+        for c in range(C):
+            convs.append(RDB_Conv(G0 + c*G, G))
+        self.convs = nn.Sequential(*convs)
+        
+        # Local Feature Fusion
+        self.LFF = nn.Conv2d(G0 + C*G, G0, 1, padding=0, stride=1)
+
+    def forward(self, x):
+        return self.LFF(self.convs(x)) + x
+
+class RDN_OSM(nn.Module):
+    def __init__(self, args):
+        super(RDN_OSM, self).__init__()
+        # r = args.scale[0]
+        r=3
+        G0 = args.G0
+        kSize = args.RDNkSize
+
+        # number of RDB blocks, conv layers, out channels
+        self.D, C, G = {
+            'A': (20, 6, 32),
+            'B': (16, 8, 64),
+        }[args.RDNconfig]
+
+
+        rgb_mean = (0.4488, 0.4371, 0.4040)
+        rgb_std = (1.0, 1.0, 1.0)
+        self.sub_mean = common.MeanShift(args.rgb_range, rgb_mean, rgb_std)
+        self.add_mean = common.MeanShift(args.rgb_range, rgb_mean, rgb_std, 1)
+
+        # Shallow feature extraction net
+        self.SFENet1 = nn.Conv2d(args.n_colors, G0, kSize, padding=(kSize-1)//2, stride=1)
+        self.SFENet2 = nn.Conv2d(G0, G0, kSize, padding=(kSize-1)//2, stride=1)
+
+        # Redidual dense blocks and dense feature fusion
+        self.RDBs = nn.ModuleList()
+        for i in range(self.D):
+            self.RDBs.append(
+                RDB(growRate0 = G0, growRate = G, nConvLayers = C)
+            )
+
+        # Global Feature Fusion
+        self.GFF = nn.Sequential(*[
+            nn.Conv2d(self.D * G0, G0, 1, padding=0, stride=1),
+            nn.Conv2d(G0, G0, kSize, padding=(kSize-1)//2, stride=1)
+        ])
+
+        # Up-sampling net
+        if r == 2 or r == 3:
+            self.UPNet = nn.Sequential(*[
+                nn.Conv2d(G0, G * r * r, kSize, padding=(kSize-1)//2, stride=1),
+                nn.PixelShuffle(r),
+                nn.Conv2d(G, args.n_colors, kSize, padding=(kSize-1)//2, stride=1)
+            ])
+        elif r == 4:
+            self.UPNet = nn.Sequential(*[
+                nn.Conv2d(G0, G * 4, kSize, padding=(kSize-1)//2, stride=1),
+                nn.PixelShuffle(2),
+                nn.Conv2d(G, G * 4, kSize, padding=(kSize-1)//2, stride=1),
+                nn.PixelShuffle(2),
+                nn.Conv2d(G, args.n_colors, kSize, padding=(kSize-1)//2, stride=1)
+            ])
+        else:
+            raise ValueError("scale must be 2 or 3 or 4.")
+
+    def forward(self, x_inp,scale_int,out_size):
+        x_inp = self.sub_mean(x_inp)
+        f__1 = self.SFENet1(x_inp)
+        x  = self.SFENet2(f__1)
+
+        RDBs_out = []
+        for i in range(self.D):
+            x = self.RDBs[i](x)
+            RDBs_out.append(x)
+
+        x = self.GFF(torch.cat(RDBs_out,1))
+        x += f__1
+
+        x = self.UPNet(x)
+
+        # the skip from LR image
+        x2=F.interpolate(x_inp,scale_factor=3,mode='bicubic')
+        x=x+x2
+
+        # downsample to the target scale
+        x=F.interpolate(x,size=out_size,mode='bicubic',align_corners=True)
+
+        x = self.add_mean(x)
+        return x
