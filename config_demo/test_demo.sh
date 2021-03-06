@@ -1,0 +1,11 @@
+nohup /apdcephfs/private_henrycliang/anaconda3/envs/NASSR/bin/python3.6 -u /apdcephfs/private_henrycliang/PyProject1/Meta-SR-Pytorch/main.py \
+        --dir_data /apdcephfs/share_1330077/henrycliang/dataset/NASSR/ \
+        --model multi_srdn_metashuffle_v10 \
+        --save multi_srdn_metashuffle_v10_Sall \
+        --pre_train /apdcephfs/share_1330077/henrycliang/dataset/NASSR/experiment/multi_srdn_metashuffle_v10_Sall/model/model_1281.pt \
+        --test_only \
+        --lr_decay 200 \
+        --n_GPUs 1 \
+        --small_mask \
+        --distill_model trainer_distill \
+        --ext sep > /apdcephfs/private_henrycliang/PyProject1/test_MetaSR1/test_MultiSRDN_Metashuffle_v10_Sall.log
