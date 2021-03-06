@@ -11,6 +11,8 @@ Please refer to [Meta-SR](https://github.com/XuecaiHu/Meta-SR-Pytorch) to prepar
 
 - Sub-net: [multi_srdn_metashuffle_v10.py](https://github.com/liangheng96/OFA-SR/blob/master/model/multi_srdn_metashuffle_v10.py) gets the best simmable sub-net.
 
+- Now you can look at these two models directly.
+
 
 # Training
 - Please refer to [train_demo](https://github.com/liangheng96/OFA-SR/blob/master/config_demo/train_demo.sh) to get the training configuration.
