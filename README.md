@@ -3,6 +3,7 @@ This is a brief introduction about how to use this code.
 
 Please refer to [Meta-SR](https://github.com/XuecaiHu/Meta-SR-Pytorch) to prepare the training and testing dataset.
 
+* overall-framework
 ![](/fig/overall-framework.png)
 
 # Useful model
@@ -20,8 +21,10 @@ Please refer to [Meta-SR](https://github.com/XuecaiHu/Meta-SR-Pytorch) to prepar
 
 
 # Current Performance
+* Full-net
 ![](/fig/full-net.png)
 
+* Sub-net
 ![](/fig/sub-net.png)
 
 
